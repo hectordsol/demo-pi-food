@@ -4,11 +4,10 @@
 const { Recipe, DietType, recipe_dietType } = require('../db');
 const ModelCrud = require('./index');
 const { API_KEY } = process.env;
-const { Sequelize, Op }= require('sequelize');
+const { Op }= require('sequelize');
 const { URL_RECIPEID, URL_RECIPESCOMPLEX } = require('../constants');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
-
 
 class RecipeModel extends ModelCrud {
     constructor(model) {
@@ -30,7 +29,7 @@ class RecipeModel extends ModelCrud {
             attributes: attrDb,
             where: whereDb,    
             include: includeDb,
-        };// if(req.query.name) {
+        };
             try {
                 //Busquemos en la base de datos.. 
                 let dbRecipes = await this.model.findAll(queryDb);
@@ -80,10 +79,12 @@ class RecipeModel extends ModelCrud {
         // DB Id
         if(pk){
             if(pk.length > 9) {
-                details = await this.model.findOne({
-                    where: { id: pk,},
-                    include: [{ model: DietType, attributes: ['id','name']}],  
-                })
+                try{
+                    details = await this.model.findOne({
+                        where: { id: pk,},
+                        include: [{ model: DietType, attributes: ['id','name']}],  
+                    })
+                }catch (error) {console.log("error buscando db",error.pk)}
                 if(details){
                     let { DietTypes} = details;
                     let diets = DietTypes? DietTypes.map((diet) => diet.name): [];   
@@ -99,15 +100,18 @@ class RecipeModel extends ModelCrud {
                         data: details,
                     })
                 }
-                else{
+                else{console.log("no details");
                     res.status(404).json({
                         message: "Not exist a this id recipes in the Database",
                     })
                 }
             }
             // API Id
-            else{
-                let apiIdDetail = await axios.get(`${URL_RECIPEID}/${pk}/information?apiKey=${API_KEY}`);
+            else{let apiIdDetail;
+                try{
+                apiIdDetail = await axios.get(`${URL_RECIPEID}/${pk}/information?apiKey=${API_KEY}`);
+                }
+                catch (error) {console.log("error buscando api",error.id)}
                 if(apiIdDetail) {
                     details = {
                         image: apiIdDetail.data.image,
@@ -130,9 +134,14 @@ class RecipeModel extends ModelCrud {
                         data: details,
                     })
                 }
+                else{console.log("no details API");
+                    res.status(404).json({
+                        message: "Not exist a this id recipes in the API",
+                    })
+                }
             } 
         }
-        else{
+        else{console.log("else sin params");
             res.status(404).json({
                 message: "Not exist a 'req.params' in the URL.",
             })
